@@ -75,6 +75,9 @@ int handle_new_connection(int listen_sock)
             return 0;
         }
     }
+    char buf[20] = "boos";
+    send(new_client_sock, &buf, 5, 0);
+    printf("sent something\n");
 }
 
 int main(int argc, char *argv[]){
@@ -91,8 +94,6 @@ int main(int argc, char *argv[]){
     }
 
     fd_set read_fds;
-    FD_ZERO(&read_fds);
-    FD_SET(listen_sock, &read_fds);
     printf("this is listen_sock: %d\n",listen_sock);
     int fdmax = listen_sock;
 
