@@ -3,16 +3,13 @@ CC := gcc
 
 BUILD_DIR=.
 
-all: server.o client.o
+all: clean ${BUILD_DIR}/server ${BUILD_DIR}/client
 
-server: ${BUILD_DIR}/server.o
-client: ${BUILD_DIR}/client.o
+${BUILD_DIR}/server:
+	$(CC) server.c -o ${BUILD_DIR}/server
 
-${BUILD_DIR}/server.o:
-	$(CC) -c server.c -o ${BUILD_DIR}/server.o
-
-${BUILD_DIR}/client.o:
-	$(CC) -c client.c -o ${BUILD_DIR}/client.o
+${BUILD_DIR}/client:
+	$(CC) client.c -o ${BUILD_DIR}/client
 
 ${BUILD_DIR}/rsdl.o: src/rsdl.hpp src/rsdl.cpp
 	$(CC) -c src/rsdl.cpp -o ${BUILD_DIR}/rsdl.o
