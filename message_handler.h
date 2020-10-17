@@ -13,6 +13,7 @@
 #include "logger.h"
 
 #define NO_LOGGER -1
+#define GAME_CREATED "game ready on port:"
 
 typedef struct {
     int socket;

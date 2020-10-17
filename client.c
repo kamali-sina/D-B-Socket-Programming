@@ -45,6 +45,47 @@ int make_server(connection* server, int port_no){
     return 0;
 }
 
+int find_char_in_string(char* str, char c){
+    for (int i = 0 ; i < strlen(str) ; i++){
+        if (str[i] == c)
+            return i;
+    }
+    return -1;
+}
+
+int accept_new_port(connection* server, int *id){
+    for (int i = 0; i < strlen(server->message_buffer); i++){
+        char subbuff[60];
+        memcpy( subbuff, &server->message_buffer[i], strlen(GAME_CREATED));
+        subbuff[strlen(GAME_CREATED)] = '\0';
+        if (strcmp(subbuff, GAME_CREATED) == 0){
+            int comma_loc = find_char_in_string(server->message_buffer, ',');
+            int port_index = i + strlen(GAME_CREATED);
+            int port_len = comma_loc - port_index;
+            memcpy(subbuff, &server->message_buffer[port_index], port_len);
+            subbuff[port_len] = '\0';
+            int game_port = atoi(subbuff);
+            int id_len = 1;
+            memcpy(subbuff, &server->message_buffer[comma_loc+1], id_len);
+            subbuff[id_len] = '\0';
+            *id = atoi(subbuff);
+            return game_port;
+        }
+    }
+    return -1;
+}
+
+int is_input_valid(connection *server, int *request_sent){
+    int gamenumber = atoi(server->message_buffer);
+    if (gamenumber < 2 || gamenumber > 4){
+        printf("input was not valid, gamemode can be 2, 3 or 4\n");
+        server->sending_something_to = 0;
+        return -1;
+    }
+    *request_sent = 1;
+    return 0;
+}
+
 int main(int argc, char *argv[]){
     if (argc < 2){
         printf("No Command Line Arguments were provided\n");
@@ -67,9 +108,14 @@ int main(int argc, char *argv[]){
     fd_set read_fds;
     fd_set write_fds;
     int maxfd = server.socket;
-    
+    int game_port;
+    int game_id;
+    int request_sent = 0;
     while (1) {
-        printf("Waiting for server message or stdin input. Please, type text to send:\n");
+        if (request_sent == 0)
+            printf("Please, type what game you want to join: \n");
+        else
+            printf("Waiting for players to fill queue...\n");
         FD_ZERO(&read_fds);
         FD_SET(STDIN_FILENO, &read_fds);
         FD_SET(server.socket, &read_fds);
@@ -85,11 +131,16 @@ int main(int argc, char *argv[]){
                 printf("could not read from stdin\n");
                 exit(1);
             }
+            is_input_valid(&server, &request_sent);
         }
 
         if (FD_ISSET(server.socket, &read_fds)) {
             if (get_message_connection(&server, NO_LOGGER) == -1)
                 DieWithError("server closed connection");
+            game_port = accept_new_port(&server, &game_id);
+            if (game_port == -1)
+                DieWithError("Server Did not accept our request");
+            break;
         }
 
         if (FD_ISSET(server.socket, &write_fds) && server.sending_something_to == 1) {
@@ -99,4 +150,5 @@ int main(int argc, char *argv[]){
             }
         }
     }
+    printf("starting game on port %d and id %d\n", game_port, game_id);
 }

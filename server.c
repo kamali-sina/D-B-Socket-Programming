@@ -18,6 +18,8 @@
 #define NO_SOCKET -1
 
 char server_name[30] = "server";
+int play_queue[3] = { 0, 0, 0 };
+int last_port_used = 2020;
 
 void DieWithError(char *errorMessage)
 {
@@ -92,6 +94,21 @@ int handle_new_connection(int listen_sock, int logger_fd){
     return -1;
 }
 
+int parse_message(connection* peer){
+    for (int i = 0; i < strlen(peer->message_buffer); i++){
+        if (peer->message_buffer[i] == '>'){
+            char c = peer->message_buffer[i+2];
+            peer->game_mode = c - 48;
+            play_queue[peer->game_mode - 2] += 1;
+            if (play_queue[peer->game_mode - 2] == peer->game_mode){
+                printf("ready to start %d player game...\n", peer->game_mode);
+                return peer->game_mode;
+            }
+            return -1;
+        }
+    }
+}
+
 int reset_fds(fd_set *read_fds, fd_set *write_fds, int listen_sock){
     int fdmax = listen_sock;
     FD_ZERO(read_fds);
@@ -106,10 +123,51 @@ int reset_fds(fd_set *read_fds, fd_set *write_fds, int listen_sock){
     }
     FD_ZERO(write_fds);
     for (int i = 0; i < MAX_CLIENTS; ++i)
-        if (connection_list[i].socket != NO_SOCKET)
+        if (connection_list[i].socket != NO_SOCKET && connection_list[i].sending_something_to == 1){
             FD_SET(connection_list[i].socket, write_fds);
+        }
 
     return fdmax;
+}
+
+int get_free_port(){
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        perror("socket");
+        return -1;
+    }
+    
+    struct sockaddr_in my_addr;
+    memset(&my_addr, 0, sizeof(my_addr));
+    my_addr.sin_family = AF_INET;
+    my_addr.sin_addr.s_addr = inet_addr(SERVER_IPV4_ADDR);
+    int i;
+    for (i = last_port_used+1; i < 10000; i++){
+        my_addr.sin_port = htons(0);
+        if (bind(sock, (struct sockaddr*)&my_addr, sizeof(struct sockaddr)) == 0) {
+            break;
+        }
+    }
+    last_port_used = i;
+    return i;
+}
+
+int queue_messages(int gamemode, int port, int logger_fd){
+    int ins = 0;
+    for (int i = 0 ; i < MAX_CLIENTS ; i++){
+        if (connection_list[i].game_mode == gamemode && connection_list[i].socket != NO_SOCKET){
+            snprintf(connection_list[i].message_buffer, sizeof(connection_list[i].message_buffer), "%s%d,%d",GAME_CREATED,port,ins);
+            connection_list[i].sending_something_to = 1;
+            ins += 1;
+        }
+    }
+    if (ins != gamemode){
+        logger_log("encountered bug in queuing messages\n", logger_fd);
+        exit(1);
+    }
+    logger_log("messages queued to start game\n",logger_fd);
+    play_queue[gamemode - 2] = 0;
+    return 0;
 }
 
 int main(int argc, char *argv[]){
@@ -129,10 +187,10 @@ int main(int argc, char *argv[]){
     fd_set read_fds;
     fd_set write_fds;
     int fdmax = listen_sock;
-
+    
     while(1){
         fdmax = reset_fds(&read_fds, &write_fds, listen_sock);
-        int status = select(fdmax+1, &read_fds, NULL,NULL,NULL);
+        int status = select(fdmax+1, &read_fds, &write_fds,NULL,NULL);
         if (status == -1){
             logger_log("fuck, select status was -1\n",logger_fd);
             return -1;
@@ -152,14 +210,20 @@ int main(int argc, char *argv[]){
                     close_client_connection(&connection_list[i], logger_fd);
                     continue;
                 }
+                int gamemode = parse_message(&connection_list[i]); 
+                if (gamemode != -1){
+                    int port = get_free_port();
+                    queue_messages(gamemode, port, logger_fd);
+                }
             }
     
-            // if (connection_list[i].socket != NO_SOCKET && FD_ISSET(connection_list[i].socket, &write_fds)) {
-            //     if (send_to_peer(&connection_list[i]) != 0) {
-            //         close_client_connection(&connection_list[i], logger_fd);
-            //         continue;
-            //     }
-            // }
+            if (connection_list[i].socket != NO_SOCKET && FD_ISSET(connection_list[i].socket, &write_fds)) {
+                if (send_to_connection(&connection_list[i], server_name, logger_fd) != 0) {
+                    close_client_connection(&connection_list[i], logger_fd);
+                    continue;
+                }
+                close_client_connection(&connection_list[i], logger_fd);
+            }
         }
 
     }
