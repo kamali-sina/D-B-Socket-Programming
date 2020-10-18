@@ -17,6 +17,8 @@ server
 client
 test*
 *txt
+c
+s
 # Compiled Python bytecode
 *.py[cod]
 
