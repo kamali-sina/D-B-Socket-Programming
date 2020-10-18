@@ -3,27 +3,18 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
-#include "message_handler.h"
+#include "game.h"
 
-#define SERVER_ADDR "127.0.0.1"
 #define STDIN_FILENO 0
-
-void DieWithError(char *errorMessage)
-{
-    perror(errorMessage);
-    exit(1);
-}
 
 int read_from_stdin(char *read_buffer, size_t max_len){
     memset(read_buffer, 0, max_len);
-    
     ssize_t read_count = 0;
     ssize_t total_read = 0;
     read_count = read(STDIN_FILENO, read_buffer, max_len);
     size_t len = strlen(read_buffer);
     if (len > 0 && read_buffer[len - 1] == '\n')
         read_buffer[len - 1] = '\0';
-
     printf("Read from stdin %s .\n", read_buffer);
     return 0;
 }
@@ -51,6 +42,21 @@ int find_char_in_string(char* str, char c){
             return i;
     }
     return -1;
+}
+
+char* strip_message(char* message){
+    printf("full message is %s", message);
+    for (int i = 0; i < strlen(message); i++){
+        if (message[i] == '>'){
+            char *buf = (char*) malloc(sizeof(char) * 60);
+            int start_index = i + 2;
+            int port_len = strlen(message) - start_index;
+            memcpy(buf, &message[start_index], port_len);
+            buf[port_len] = '\0';
+            printf("message was %s \n", buf);
+            return buf;
+        }
+    }
 }
 
 int accept_new_port(connection* server, int *id){
@@ -83,7 +89,7 @@ int is_input_valid(connection *server, int *request_sent){
         return -1;
     }
     *request_sent = 1;
-    return 0;
+    return gamenumber;
 }
 
 int main(int argc, char *argv[]){
@@ -110,6 +116,7 @@ int main(int argc, char *argv[]){
     int maxfd = server.socket;
     int game_port;
     int game_id;
+    int game_mode = -1;
     int request_sent = 0;
     while (1) {
         if (request_sent == 0)
@@ -123,7 +130,7 @@ int main(int argc, char *argv[]){
         FD_ZERO(&write_fds);
         if (server.sending_something_to == 1)
             FD_SET(server.socket, &write_fds);
-            
+
         int activity = select(maxfd + 1, &read_fds, &write_fds, NULL, NULL);
 
         if (FD_ISSET(STDIN_FILENO, &read_fds)){
@@ -131,7 +138,7 @@ int main(int argc, char *argv[]){
                 printf("could not read from stdin\n");
                 exit(1);
             }
-            is_input_valid(&server, &request_sent);
+            game_mode = is_input_valid(&server, &request_sent);
         }
 
         if (FD_ISSET(server.socket, &read_fds)) {
@@ -150,5 +157,74 @@ int main(int argc, char *argv[]){
             }
         }
     }
-    printf("starting game on port %d and id %d\n", game_port, game_id);
+
+    printf("starting %d player game on port %d and as player %d\n", game_mode,game_port, game_id);
+    connection game_server;
+    get_game_server(game_port, &game_server);
+    connect_to_game_server(&game_server, game_id);
+    if (game_id != 0){
+        sendto(game_server.socket, "hello", 100, 0, (struct sockaddr*)&game_server.address, sizeof(game_server.address));
+    }
+    setup_game(game_mode);
+    int max_sock_fd = game_server.socket;
+    printf("--------------WELCOME----------------\n");
+    printf("HOWTOPLAY: you give 3 inputs, y x (vert/horiz), with horiz is 0 and vert is 1\n");
+    printf("HOWTOWIN: get squars, get points... player with highest points wins...\n");
+    printf("YOU ARE PLAYER %d\n",game_id);
+    printf("-------------------------------------\n");
+    print_map(game_id);
+    alarm(ALARM_TIME);
+    while (1){
+        FD_ZERO(&read_fds);
+        FD_SET(STDIN_FILENO, &read_fds);
+        FD_SET(game_server.socket, &read_fds);
+        FD_ZERO(&write_fds);
+        FD_SET(game_server.socket, &write_fds);
+        int activity = select( max_sock_fd+ 1, &read_fds, &write_fds, NULL, NULL);
+
+        if (FD_ISSET(STDIN_FILENO, &read_fds)){
+            if (handle_read_from_stdin(&game_server) != 0){
+                printf("could not read from stdin\n");
+                exit(1);
+            }
+            if (strcmp(game_server.message_buffer, "hello") == 0){
+                continue;
+            }
+            if (turn != game_id){
+                printf("it is not your turn!\n");
+                game_server.sending_something_to = 0;
+            }else
+            if (is_game_input_valid(&game_server) != 0){
+                game_server.sending_something_to = 0;
+                printf("input is not valid\n");
+            }else{
+                if (register_move(game_server.message_buffer, &game_server, game_id) == 0){
+                    print_map(game_id);
+                }else{
+                    printf("line is already drawn... try another line\n");
+                    game_server.sending_something_to = 0;
+                }
+            }
+        }
+
+        if (FD_ISSET(game_server.socket, &read_fds)) {
+            if (get_message_udp(&game_server) == -1)
+                DieWithError("one player closed connection\n");
+            if (strcmp(game_server.message_buffer, "hello") == 0){
+                continue;
+            }
+            register_move(game_server.message_buffer, &game_server, game_id);
+            if (game_id == 0){
+                game_server.sending_something_to = 0;
+            }
+            print_map(game_id);
+        }
+
+        if (FD_ISSET(game_server.socket, &write_fds) && game_server.sending_something_to == 1) {
+            if (send_message_udp(&game_server, node_name) != 0){
+                printf("could not send message to reciever, terminating\n");
+                exit(0);
+            }
+        }
+    }
 }
