@@ -21,12 +21,6 @@ char server_name[30] = "server";
 int play_queue[3] = { 0, 0, 0 };
 int last_port_used = 2020;
 
-void DieWithError(char *errorMessage)
-{
-    perror(errorMessage);
-    exit(1);
-}
-
 connection connection_list[MAX_CLIENTS];
 
 void init_connections(){
