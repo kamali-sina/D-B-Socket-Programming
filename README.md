@@ -1,29 +1,20 @@
 # README #
+-----programmed by Sina Kamali for the OS Course at University of Tehran-----
 
-This README would normally document whatever steps are necessary to get your application up and running.
 
-### What is this repository for? ###
+### Summery ###
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+* This program is a great example of C socket programming. using it you can play Dots and Boxes from afar by differant clients.
+* Version 0.9
+* This program is free to use as long as you mention the author.
 
-### How do I get set up? ###
+### Running ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+* To run use "$make" in the main folder
+* Run Server by using "$./server port_number" where port number can be anyport that is free.
+* Run Client by using "$./client port_number *optional:your_name*" where port number is the same as the port used for server.
 
-### Contribution guidelines ###
 
-* Writing tests
-* Code review
-* Other guidelines
+### Contact ###
 
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+contact me at mailto:sininoir@gmail.com if you have any questions.
