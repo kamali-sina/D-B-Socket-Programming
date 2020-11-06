@@ -9,7 +9,7 @@ dist/
 
 # Compiled Java class files
 *.class
-
+*.java
 
 # Project specific files
 *.o
