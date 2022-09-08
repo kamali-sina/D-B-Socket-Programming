@@ -1,20 +1,29 @@
-# README #
------programmed by Sina Kamali for the OS Course at University of Tehran-----
+# Dots and Boxes: Socket programming
 
+programmed by Sina Kamali for the OS Course at University of Tehran.
 
-### Summery ###
+## Description
 
-* This program is a great example of C socket programming. using it you can play Dots and Boxes from afar by differant clients.
-* Version 0.9
-* This program is free to use as long as you mention the author.
+This project is a great example for C socket programming. by using it you can play Dots and Boxes from differant clients. All you need is a server to run the server code on. Feel free to use the code to understand C socket programming.
 
-### Running ###
+## How to Build
 
-* To run use "$make" in the main folder
-* Run Server by using "$./server port_number" where port number can be anyport that is free.
-* Run Client by using "$./client port_number *optional:your_name*" where port number is the same as the port used for server.
+First, run the following to build the project:
 
+    make
 
-### Contact ###
+Then you can run the server by using:
 
-contact me at mailto:sininoir@gmail.com if you have any questions.
+    ./server <port_number>
+
+Where \<port_number\> should be replaced by the port you want your server to run on.
+
+To run the client, you can use:
+
+    ./client <port_number> <optional: username>
+
+Where \<port_number\> is the same as server's port number, and \<username\> is an optional field for your username in game.
+
+## Contact
+
+If you have any questions regrading the code, feel free to contact me by my email.
