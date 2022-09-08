@@ -14,16 +14,16 @@ First, run the following to build the project:
 
 Then you can run the server by using:
 
-    ./server <port_number>
+    ./server <port number>
 
-Where \<port_number\> should be replaced by the port you want your server to run on.
+Where \<port number\> should be replaced by the port you want your server to run on.
 
 To run the client, you can use:
 
-    ./client <port_number> <optional: username>
+    ./client <port number> <optional: username>
 
-Where \<port_number\> is the same as server's port number, and \<username\> is an optional field for your username in game.
+Where \<port number\> is the same as server's port number, and \<username\> is an optional field for your username in game.
 
 ## Contact
 
-If you have any questions regrading the code, feel free to contact me by my email.
+If you have any questions regrading the code, feel free to contact me by email.
